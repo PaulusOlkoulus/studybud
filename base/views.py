@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
 from django.db.models import Q
-from .models import Room, Topic
+from .models import Room, Topic, Message
 from .forms import RoomForm
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -55,7 +55,7 @@ def registerUser(request):
             login(request, user)
             return redirect('home')
         else:
-            messages.error(request,'An error occurred during registration')
+            messages.error(request, 'An error occurred during registration')
 
     context = {
         'form': form
@@ -86,8 +86,22 @@ def home(request):
 
 def room(request, pk):
     room = get_object_or_404(Room, pk=pk)
+    room_messages = room.message_set.all().order_by('-created')
+    participants = room.participants.all()
+    if request.method == 'POST':
+        message = Message.objects.create(
+            user=request.user,
+            room=room,
+            body=request.POST.get('body'),
+        )
+        room.participants.add(request.user)
+        return redirect('room', pk=room.id)
 
-    context = {"room": room}
+    context = {
+        "room": room,
+        'room_messages': room_messages,
+        'participants': participants
+    }
     return render(request, 'base/room.html', context)
 
 
@@ -131,3 +145,14 @@ def deleteRoom(request, pk):
         room.delete()
         return redirect('home')
     return render(request, 'base/delete.html', {'request': request, 'obj': room})
+
+
+@login_required(login_url='login')
+def deleteMesssage(request, pk):
+    message = get_object_or_404(Message, id=pk)
+    if request.user != message.user:
+        return HttpResponse('You are not allowed here!')
+    if request.method == 'POST':
+        message.delete()
+        return redirect('home')
+    return render(request, 'base/delete.html', {'request': request, 'obj': message})
