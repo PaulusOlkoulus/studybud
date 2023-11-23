@@ -6,11 +6,16 @@ from django.db.models import Q
 from .models import Room, Topic
 from .forms import RoomForm
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 
 
 # I stopped at 1:21:30
 
 def loginPage(request):
+
+    if request.user.is_authenticated:
+        return redirect('home')
+
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -63,6 +68,7 @@ def room(request, pk):
     return render(request, 'base/room.html', context)
 
 
+@login_required(login_url='login')
 def createRoom(request):
     form = RoomForm()
     if request.method == 'POST':
@@ -74,9 +80,14 @@ def createRoom(request):
     return render(request, 'base/room_form.html', context)
 
 
+@login_required(login_url='login')
 def updateRoom(request, pk):
     room = Room.objects.get(id=pk)
+    if request.user != room.host:
+        return HttpResponse('You are not allowed here!')
+
     form = RoomForm(instance=room)
+
 
     if request.method == 'POST':
         form = RoomForm(request.POST, instance=room)
@@ -89,8 +100,11 @@ def updateRoom(request, pk):
     return render(request, 'base/room_form.html', context)
 
 
+@login_required(login_url='login')
 def deleteRoom(request, pk):
     room = get_object_or_404(Room, id=pk)
+    if request.user != room.host:
+        return HttpResponse('You are not allowed here!')
     if request.method == 'POST':
         room.delete()
         return redirect('home')
