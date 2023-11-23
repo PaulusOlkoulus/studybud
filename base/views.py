@@ -1,13 +1,58 @@
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
-from .models import Room
+from django.db.models import Q
+from .models import Room, Topic
 from .forms import RoomForm
+from django.contrib.auth.models import User
 
 
 # I stopped at 1:21:30
+
+def loginPage(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        try:
+            user = User.objects.get(username=username)
+        except:
+            messages.error(request, 'User does not exist!')
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return redirect('home')
+        else:
+            messages.error(request, 'Username OR password does not exist!')
+
+    context = {}
+    return render(request, 'base/login_register.html', context)
+
+
+def logoutUser(request):
+    logout(request)
+    return redirect('home')
+
+
 def home(request):
-    rooms = Room.objects.all()
-    context = {'rooms': rooms}
+    q = request.GET.get('q') if request.GET.get('q') else ''
+    rooms = Room.objects.filter(
+        Q(topic__name__icontains=q) |
+        Q(name__icontains=q) |
+        Q(description__icontains=q) |
+        Q(host__username__icontains=q)
+    )
+    room_count = rooms.count()
+
+    topics = Topic.objects.all()
+
+    context = {
+        'rooms': rooms,
+        'topics': topics,
+        'room_count': room_count
+    }
     return render(request, 'base/home.html', context)
 
 
