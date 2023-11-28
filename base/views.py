@@ -111,11 +111,13 @@ def userProfile(request, pk):
     room_messages = user.message_set.all()
     rooms = user.room_set.all()
     topics = Topic.objects.all()
+    room_count = rooms.count()
     context = {
         'user': user,
         'rooms': rooms,
         'room_messages': room_messages,
-        'topics': topics
+        'topics': topics,
+        'room_count':room_count
     }
     return render(request, 'base/profile.html', context)
 
